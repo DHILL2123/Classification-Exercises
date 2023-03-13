@@ -18,6 +18,10 @@ def clean_titanic(df_titanic):
 
 
 
+
+
+
+
 def split_titanic_data(df_titanic):
     '''
      split titanic data will split data based on 
@@ -33,9 +37,16 @@ def split_titanic_data(df_titanic):
 
 
 
+def prep_iris(df_iris):
+    ''' prep iris will take in a single pandas dataframe
+    that will presumably match the columns and shape that we 
+    expect from our acquire modules get_iris_data 
+    functional return 
+    '''
+    df_iris = df_iris.drop(columns={'species_id','measurement_id','Unnamed: 0'}).rename(columns={'species_name' : 'species'})
+    df_iris = pd.concat([df_iris, dummy_df], axis=1)
+    df_iris = df_iris
 
-
-def prep_titanic(df_titanic):
-    df_titanic = clean_titanic(df_titanic)
-    return split_titanic_data(df_titanic)
-
+    return df_iris.head()
+    
+    #pass in original df as the aregument
