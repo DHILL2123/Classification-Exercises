@@ -1,3 +1,7 @@
+
+import os
+import pandas as pd
+
 def clean_titanic(df_titanic):
     '''
     Clean titanic will take in a single pandas dataframe
@@ -7,12 +11,18 @@ def clean_titanic(df_titanic):
     and encoding categorical variables
     '''
     
-#impute average age and most common embark_town:
+    #impute average age and most common embark_town:
     df_titanic['age'] = df_titanic['age'].fillna(df_titanic.age.mean())
     df_titanic['embark_town'] = df_titanic['embark_town'].fillna('Southhampton')
+
     #encode categorical values
     df_titanic = pd.concat(
     [df_titanic, pd.get_dummies(df_titanic[['sex','embark_town']], drop_first=True)], axis=1)
+    
+    df_titanic = df_titanic.drop(columns={'Unnamed: 0','passenger_id','embarked', 'deck','class','sex','embark_town'}).rename(columns={'sibsp' : 'sibling_spouse'})
+     
+     # convert column names to lowercase, replace '.' in column names with '_'
+    df_titanic.columns = [col.lower().replace('.', '_') for col in df_titanic]
     
     return df_titanic
 
