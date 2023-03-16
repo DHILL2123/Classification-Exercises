@@ -1,6 +1,22 @@
 
 import os
 import pandas as pd
+from sklearn.neighbors import KNeighborsClassifier
+target = ''
+train_test_split=''
+#####  prep data titanic functions ####
+def clean_data(df):
+    '''
+    This function will drop any duplicate observations, 
+    drop ['deck', 'embarked', 'class', 'age'], fill missing embark_town with 'Southampton'
+    and create dummy vars from sex and embark_town. 
+    '''
+    df = df.drop_duplicates()
+    df = df.drop(columns=['deck', 'embarked', 'class', 'age'])
+    df['embark_town'] = df.embark_town.fillna(value='Southampton')
+    dummy_df = pd.get_dummies(df[['sex', 'embark_town']], drop_first=True)
+    df = pd.concat([df, dummy_df], axis=1)
+    return df
 
 def clean_titanic(df_titanic):
     '''
@@ -9,8 +25,7 @@ def clean_titanic(df_titanic):
     and nonuseful information 
     in addition to addressing null values
     and encoding categorical variables
-    '''
-    
+    '''  
     #impute average age and most common embark_town:
     df_titanic['age'] = df_titanic['age'].fillna(df_titanic.age.mean())
     df_titanic['embark_town'] = df_titanic['embark_town'].fillna('Southhampton')
@@ -20,17 +35,56 @@ def clean_titanic(df_titanic):
     [df_titanic, pd.get_dummies(df_titanic[['sex','embark_town']], drop_first=True)], axis=1)
     
     df_titanic = df_titanic.drop(columns={'Unnamed: 0','passenger_id','embarked', 'deck','class','sex','embark_town'}).rename(columns={'sibsp' : 'sibling_spouse'})
-     
+
      # convert column names to lowercase, replace '.' in column names with '_'
     df_titanic.columns = [col.lower().replace('.', '_') for col in df_titanic]
+    # Drop duplicates...run just in case; reassign and check the shape of my data.
+    df_titanic = df_titanic.drop_duplicates()
     
     return df_titanic
 
+# drop rows where age or embarked is null, drop column 'deck', drop passenger_id
+
+def prep_titanic(df):
+    '''
+    take in titanc dataframe, remove all rows where age or embarked is null, 
+    get dummy variables for sex and embark_town, 
+    and drop sex, deck, passenger_id, class, and embark_town. 
+    '''
+
+    df = df[(df.age.notna()) & (df.embarked.notna())]
+    df = df.drop(columns=['deck', 'passenger_id', 'class'])
+
+    dummy_df = pd.get_dummies(df[['sex', 'embark_town']], prefix=['sex', 'embark'])
+
+    df = pd.concat([df, dummy_df.drop(columns=['sex_male'])], axis=1)
+
+    df = df.drop(columns=['sex', 'embark_town']) 
+
+    df = df.rename(columns={"sex_female": "is_female"})
+    # Drop duplicates...run just in case; reassign and check the shape of my data.
+    df = df.drop_duplicates()
+
+    return df
+
+####### prep iris data functions ######
+
+def prep_iris(df_iris):
+    ''' prep iris will take in a single pandas dataframe
+    that will presumably match the columns and shape that we 
+    expect from our acquire modules get_iris_data 
+    functional return 
+    '''
+    df_iris = df_iris.drop(columns={'species_id','measurement_id','Unnamed: 0'}).rename(columns={'species_name' : 'species'})
+    df_iris = pd.concat([df_iris, dummy_df], axis=1)
+    df_iris = df_iris
+
+    return df_iris.head()
 
 
 
 
-
+###### Train Validate Test Split Functions #####
 
 def split_titanic_data(df_titanic):
     '''
@@ -45,18 +99,152 @@ def split_titanic_data(df_titanic):
     
     return train, validate, test
 
-
-
-def prep_iris(df_iris):
-    ''' prep iris will take in a single pandas dataframe
-    that will presumably match the columns and shape that we 
-    expect from our acquire modules get_iris_data 
-    functional return 
+def train_validate_test_split(df, target, seed=123):
     '''
-    df_iris = df_iris.drop(columns={'species_id','measurement_id','Unnamed: 0'}).rename(columns={'species_name' : 'species'})
-    df_iris = pd.concat([df_iris, dummy_df], axis=1)
-    df_iris = df_iris
+    This function takes in a dataframe, the name of the target variable
+    (for stratification purposes), and an integer for a setting a seed
+    and splits the data into train, validate and test. 
+    Test is 20% of the original dataset, validate is .30*.80= 24% of the 
+    original dataset, and train is .70*.80= 56% of the original dataset. 
+    The function returns, in this order, train, validate and test dataframes. 
+    '''
+    train_validate, test = train_test_split(df, test_size=0.2, 
+                                            random_state=seed, 
+                                            stratify=df[target])
+    train, validate = train_test_split(train_validate, test_size=0.3, 
+                                       random_state=seed,
+                                       stratify=train_validate[target])
+    return train, validate, test
 
-    return df_iris.head()
     
+
+
     #pass in original df as the aregument
+
+######## loops #######
+
+#for loop creating a list of models 
+#stored in model_list= []
+#dicitionary model_accuracies = {} 
+#as the dictionary to hold the model scores
+model_accuracies = {}
+model_list = []
+
+# for i in range(1,10):
+#     nknn = KNeighborsClassifier(n_neighbors = i)
+#     nknn.fit(X_train, y_train)
+#     model_list.append(nknn)
+#     model_accuracies[f'{i} - Neighbors'] = {'Train Score:':round(nknn.score(X_train, y_train),2),
+#                                            'Validate Score:':round(nknn.score(X_validate, y_validate),2)}
+    
+
+#     # I perhaps would do the same thing I did before with a loop!
+# rf_model_dict = {}
+# for i in [pair for pair in zip(range(1,10), 
+#                                 range(10,1,-1))]:
+#     clf = RandomForestClassifier(min_samples_leaf=i[0],
+#                                  max_depth=i[1])
+#     clf.fit(X_train, y_train)
+#     # make a dictionary inside of my model_dictionary
+#     rf_model_dict[f'rf_{i[0]}'] =  {}
+#     # in the sub-dictionary:
+#     # assign the model object
+#     rf_model_dict[f'rf_{i[0]}']['model'] = clf
+#     #assign the train score
+#     rf_model_dict[f'rf_{i[0]}']['train_score'] = \
+#     clf.score(X_train, y_train)
+#     # assign the validate score
+#     rf_model_dict[f'rf_{i[0]}']['val_score'] = \
+#     clf.score(X_val, y_val)
+#     # assign the validation dropoff
+#     rf_model_dict[f'rf_{i[0]}']['val_diff'] = \
+#     clf.score(X_train, y_train) - clf.score(X_val, y_val)
+# #-------------
+#     [rf_model_dict[model]['train_score'] 
+#         for model in rf_model_dict]
+
+#     for model in rf_model_dict:
+#         rf_model_dict[model]['train_accuracy']
+        
+# #------------     
+#         accuracy_df = pd.DataFrame(
+#  {
+#      'model':[model for model in rf_model_dict],
+#      'train_accuracy':[rf_model_dict[model]['train_score'] for model in rf_model_dict],
+#      'val_accuracy': [rf_model_dict[model]['val_score'] for model in rf_model_dict],
+#      'diff': [rf_model_dict[model]['val_diff'] for model in rf_model_dict]
+#  }
+# )
+
+
+# ##### Chi 2 squared #####
+# # Let's run a chi squared to compare proportions, to have more confidence
+# alpha = 0.05
+# null_hypothesis = "survival and class of ticket are independent"
+# alternative_hypothesis = "there is a relationship between class of ticket and survival"
+# # Setup a crosstab of observed survival to pclass
+# observed = pd.crosstab(train.survived, train.pclass)
+
+# chi2, p, degf, expected = stats.chi2_contingency(observed)
+
+# if p < alpha:
+#     print("Reject the null hypothesis that", null_hypothesis)
+#     print("Sufficient evidence to move forward understanding that", alternative_hypothesis)
+# else:
+#     print("Fail to reject the null")
+#     print("Insufficient evidence to reject the null")
+# p
+
+
+# #### Check out distributions of numeric columns. ######
+# num_cols = df.columns[[df[col].dtype == 'int64' for col in df.columns]]
+# for col in num_cols:
+#     plt.hist(df[col])
+#     plt.title(col)
+#     plt.show()
+
+
+# ###### Use .describe with object columns. ######
+
+# obj_cols = df.columns[[df[col].dtype == 'O' for col in df.columns]]
+# for col in obj_cols:
+#     print(df[col].value_counts())
+#     print(df[col].value_counts(normalize=True, dropna=False))
+#     print('----------------------')
+
+###### Create bins for fare using .value_counts.#####
+# # Using sort = false will sort by bin values as opposed to the frequency counts.
+# df.fare.value_counts(bins=5, sort=False)
+
+
+# ######Find columns with missing values and the total of missing values.#####
+# missing = df.isnull().sum()
+# missing[missing > 0]
+
+# ###### Drop duplicates...run just in case; reassign and check the shape of my data.#####
+# df = df.drop_duplicates()
+# df.shape
+
+# # Drop columns with too many missing values for now and reassign; check the shape of my data.
+# cols_to_drop = ['deck', 'embarked', 'class', 'age']
+# df = df.drop(columns=cols_to_drop)
+# df.shape
+
+# # Run .fillna() on the entire df.
+# df['embark_town'] = df.embark_town.fillna(value='Southampton')
+
+# # Using drop_first leaves sex_male, embark_town_Queenstown, and embark_town_Southampton.
+# dummy_df = pd.get_dummies(df[['sex','embark_town']], dummy_na=False, drop_first=[True, True])
+# dummy_df.head()
+
+# ##verify null values###
+# df.isna().sum()
+# # Useful helper for checking for nulls
+# # What proportion of each column is empty?
+# df.isna().mean()
+
+# ##confusion matrix ###
+# confusion_matrix(df.actual, df.prediction,
+#                  labels = ('no coffee', 'coffee'))
+# ##crosstab##
+# pd.crosstab(df.actual, df.prediction)
