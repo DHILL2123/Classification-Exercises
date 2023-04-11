@@ -2,6 +2,11 @@
 import os
 import pandas as pd
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+
+X= ''
+y= ''
 target = ''
 train_test_split=''
 #####  prep data titanic functions ####
@@ -81,7 +86,76 @@ def prep_iris(df_iris):
 
     return df_iris.head()
 
+###### prep telco data function #######
+def prep_telco_encode(X):
+    
+    '''defined prep_telco_encode(X) here but you can also call the function 
+    using the prepart.py file. the function takes each column encodes the value 
+    as a number representation and assigns it back to the column.'''
+    
+    X['gender']=LabelEncoder().fit_transform(X['gender'])
+    X['partner']=LabelEncoder().fit_transform(X['partner'])
+    X['dependents']=LabelEncoder().fit_transform(X['dependents'])
+    X['phone_service']=LabelEncoder().fit_transform(X['phone_service'])
+    X['multiple_lines']=LabelEncoder().fit_transform(X['multiple_lines'])
+    X['online_security']=LabelEncoder().fit_transform(X['online_security'])
+    X['online_backup']=LabelEncoder().fit_transform(X['online_backup'])
+    X['device_protection']=LabelEncoder().fit_transform(X['device_protection'])
+    X['streaming_tv']=LabelEncoder().fit_transform(X['streaming_tv'])
+    X['streaming_movies']=LabelEncoder().fit_transform(X['streaming_movies'])
+    X['paperless_billing']=LabelEncoder().fit_transform(X['paperless_billing'])
+    X['tech_support']=LabelEncoder().fit_transform(X['tech_support'])
+    X['churn']=LabelEncoder().fit_transform(X['churn'])
+    
+    #converted monthly_charges to an int datatype to make the data more uniform
+    X['monthly_charges'] = X['monthly_charges'].astype('int')
+    
+    #converted total_charges from an object to a number. 
+    #if any errors, errors='coerce', is used so any value
+    #that can't be converted to a number will be set to NaN(Not a Number)
+    #Got the median of total_charges, median = X['total_charges'].median(), 
+    #The median will be used to fill any NaN values using 
+    #X['total_charges'].fillna(median,inplace=True)
 
+    X['total_charges'] = pd.to_numeric(X['total_charges'],errors='coerce')
+    median = X['total_charges'].median()
+    X['total_charges'].fillna(median,inplace=True)
+    
+    #dropped uneeded columns other columns represent the same values
+    X = X.drop(columns=['contract_type', 'internet_service_type', 'customer_id'])
+
+
+    
+    #once all of the above is finished the results will 
+    #be store in the X variable 
+    return X
+
+
+
+def prep_telco(df):
+    df = df.drop(columns=['customer_id', 'contract_type_id', 'payment_type_id', 'internet_service_type_id'])
+    dummy_df = pd.get_dummies(df[['gender', 'partner', 'dependents', 'phone_service',
+       'multiple_lines', 'online_security', 'online_backup',
+       'device_protection', 'tech_support', 'streaming_tv', 'streaming_movies',
+       'paperless_billing', 'total_charges', 'churn', 'contract_type',
+       'internet_service_type', 'payment_type']], 
+                              prefix=['gender', 'partner', 'dependents', 'phone_service',
+       'multiple_lines', 'online_security', 'online_backup',
+       'device_protection', 'tech_support', 'streaming_tv', 'streaming_movies',
+       'paperless_billing', 'total_charges', 'churn', 'contract_type',
+       'internet_service_type', 'payment_type'])
+    
+    df = pd.concat([df, dummy_df.drop(columns=['gender_Female','partner_No','dependents_No','internet_service_type_None','churn_No','paperless_billing_No','streaming_movies_No','streaming_tv_No','tech_support_No','phone_service_No','device_protection_No','online_security_No','online_backup_No','multiple_lines_No','multiple_lines_No phone service','online_security_No internet service'])], axis=1)
+   
+
+    df = df.drop(columns=['gender', 'partner', 'dependents', 'phone_service',
+       'multiple_lines', 'online_security', 'online_backup',
+       'device_protection', 'tech_support', 'streaming_tv', 'streaming_movies',
+       'paperless_billing', 'total_charges', 'churn', 'contract_type',
+       'internet_service_type', 'payment_type'])
+    df = df.drop_duplicates()
+    df.columns = [col.lower()for col in df]
+    return df
 
 
 ###### Train Validate Test Split Functions #####
@@ -114,10 +188,25 @@ def train_validate_test_split(df, target, seed=123):
     train, validate = train_test_split(train_validate, test_size=0.3, 
                                        random_state=seed,
                                        stratify=train_validate[target])
-    return train, validate, test
+    return train, validate, test                        
 
-    
 
+def telco_train_validate_test_split(df, target, seed=123):
+    '''
+    This function takes in a dataframe, the name of the target variable
+    (for stratification purposes), and an integer for a setting a seed
+    and splits the data into train, validate and test. 
+    Test is 20% of the original dataset, validate is .30*.80= 24% of the 
+    original dataset, and train is .70*.80= 56% of the original dataset. 
+    The function returns, in this order, train, validate and test dataframes. 
+    '''
+    train_validate, test = train_test_split(df, test_size=0.2, 
+                                            random_state=seed, 
+                                            stratify=df[target])
+    train, validate = train_test_split(train_validate, test_size=0.3, 
+                                       random_state=seed,
+                                       stratify=train_validate[target])
+    return train, validate, test     
 
     #pass in original df as the aregument
 
